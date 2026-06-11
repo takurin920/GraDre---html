@@ -2,88 +2,166 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>大会対戦表オーバーレイ</title>
+    <title>配信裏ランキングオーバーレイ</title>
     <style>
-        /* OBS透過用の設定（背景を透明、文字を白に） */
+        /* OBS透過用の設定 */
         body {
             background-color: transparent;
-            color: white;
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            margin: 20px;
+            color: #ffffff;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
         }
-        h1 { text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr); /* 4試合並べる */
-            gap: 15px;
+
+        /* ランキングボード全体のコンテナ */
+        .ranking-board {
+            background-color: #2b2b2b;
+            border-collapse: collapse;
+            width: 750px; /* 配信画面に合わせて適宜調整してください */
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
         }
-        .match-box {
-            background: rgba(0, 0, 0, 0.75); /* 黒背景を少し透過 */
-            border: 2px solid #555;
-            border-radius: 8px;
-            padding: 10px;
+
+        /* ヘッダー行（RANK, WIN, LOSS, MAP） */
+        .ranking-header {
+            background-color: #1e1e1e;
+            border-bottom: 2px solid #555555;
+        }
+
+        .ranking-header th {
+            color: #e5c158; /* ゴールド風の文字色 */
+            font-weight: bold;
+            font-size: 14px;
+            letter-spacing: 2px;
+            padding: 8px 10px;
             text-align: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
-        .vs { color: #ff4757; font-weight: bold; margin: 0 5px; }
+
+        /* 各データ行 */
+        .ranking-row {
+            border-bottom: 1px solid #555555;
+            height: 55px; /* スプレッドシートの行の高さに合わせる */
+        }
+
+        .ranking-row td {
+            padding: 5px 10px;
+            vertical-align: middle;
+        }
+
+        /* 各列の固有デザイン */
+        .col-rank {
+            font-size: 32px;
+            font-weight: bold;
+            text-align: center;
+            width: 60px;
+        }
+
+        .col-icon {
+            width: 50px;
+            text-align: center;
+        }
+
+        .col-icon img {
+            width: 45px;
+            height: 45px;
+            object-fit: cover;
+            border-radius: 4px;
+            vertical-align: middle;
+        }
+
+        .col-team {
+            font-size: 20px;
+            font-weight: bold;
+            text-align: left;
+        }
+
+        .col-win, .col-loss, .col-map {
+            font-size: 26px;
+            font-weight: bold;
+            text-align: center;
+            width: 70px;
+        }
     </style>
 </head>
 <body>
 
-    <h1>🏆 大会対戦スケジュール</h1>
-    <div class="grid-container" id="schedule-box">
-        </div>
+    <table class="ranking-board">
+        <thead>
+            <tr class="ranking-header">
+                <th style="width: 60px;">R A N K</th>
+                <th style="width: 50px;"></th>
+                <th></th> <th style="width: 70px;">WIN</th>
+                <th style="width: 70px;">LOSS</th>
+                <th style="width: 70px;">M A P</th>
+            </tr>
+        </thead>
+        <tbody id="ranking-data">
+            </tbody>
+    </table>
 
     <script>
-        // 【重要】あなたのスプレッドシートIDに書き換えてください
-        const SPREADSHEET_ID = 'ここにメモしたスプレッドシートIDを入れる';
-        // 読み込みたいシート名（例: シート1）
-        const SHEET_NAME = 'シート1'; 
+        // -------------------------------------------------------------
+        // 設定エリア：ご自身の情報に書き換えてください
+        // -------------------------------------------------------------
+        const SPREADSHEET_ID = '1nrkehLR8RLvY_-X3fMbbd3y1J4mdzUMXjeJkFeeCbdU'; 
+        const SHEET_NAME = '配信表示用'; // タブ名と完全に一致させてください
+        // -------------------------------------------------------------
 
-        // Googleの可視化APIを利用してデータをJSONとして取得
-        const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+        // スプレッドシートからデータを取得するURL（B2:G11の範囲を指定）
+        const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}&range=B2:G11`;
 
-        async function fetchSchedule() {
+        async function fetchRanking() {
             try {
                 const response = await fetch(url);
                 const text = await response.text();
-                // 不要な文字を削って純粋なJSONにする処理
                 const jsonText = text.match(/google\.visualization\.Query\.setResponse\(([\s\S\s]*)\);/)[1];
                 const data = JSON.parse(jsonText);
                 
                 const rows = data.table.rows;
                 let htmlContent = '';
 
-                // スプレッドシートの4行目（インデックス3）から11行目（第1節〜第9節）のデータをループ処理
-                // ※データの並び順に合わせて調整が必要な場合があります
-                for (let i = 2; i < 11; i++) {
-                    if (!rows[i]) continue;
+                // 1行目はヘッダー(RANK, WIN...)なので、データがある2行目（インデックス1）からループ
+                for (let i = 1; i < rows.length; i++) {
                     const cols = rows[i].c;
-                    
-                    // 例として第1節の試合1の対戦（C列とE列）を抜き出す簡易サンプル
-                    // 実際はここですべての節・試合をループして成形します
-                    const team1 = cols[2] ? cols[2].v : ''; // C列
-                    const team2 = cols[4] ? cols[4].v : ''; // E列
-                    
-                    if(team1 && team2) {
-                        htmlContent += `
-                            <div class="match-box">
-                                <div>第${i-1}節 試合1</div>
-                                <span>${team1}</span><span class="vs">vs</span><span>${team2}</span>
-                            </div>
-                        `;
+                    if (!cols) continue;
+
+                    // 各セルのデータを抽出
+                    const rank  = cols[0] ? cols[0].v : ''; // B列：RANK
+                    const icon  = cols[1] ? cols[1].v : ''; // C列：画像（URLまたはセル内画像）
+                    const team  = cols[2] ? cols[2].v : ''; // D列：チーム名
+                    const win   = cols[3] ? cols[3].v : 0;  // E列：WIN
+                    const loss  = cols[4] ? cols[4].v : 0;  // F列：LOSS
+                    const map   = cols[5] ? cols[5].v : 0;  // G列：MAP
+
+                    // 画像がセルに挿入されている場合の処理（簡易対応）
+                    let imgTag = '';
+                    if (icon) {
+                        // もし画像URLがテキストとして入っているか、Googleドライブの画像などの場合に対応
+                        imgTag = `<img src="${icon}" onerror="this.style.display='none'">`;
                     }
+
+                    htmlContent += `
+                        <tr class="ranking-row">
+                            <td class="col-rank">${rank}</td>
+                            <td class="col-icon">${imgTag}</td>
+                            <td class="col-team">${team}</td>
+                            <td class="col-win">${win}</td>
+                            <td class="col-loss">${loss}</td>
+                            <td class="col-map">${map}</td>
+                        </tr>
+                    `;
                 }
-                document.getElementById('schedule-box').innerHTML = htmlContent;
+                document.getElementById('ranking-data').innerHTML = htmlContent;
             } catch (error) {
-                console.error("データの取得に失敗しました:", error);
+                console.error("ランキングデータの取得に失敗しました:", error);
             }
         }
 
         // 初回読み込み
-        fetchSchedule();
-        // 30秒ごとに自動でスプレッドシートの最新情報を読み直す（リアルタイム更新）
-        setInterval(fetchSchedule, 30000);
+        fetchRanking();
+        // 10秒ごとに自動更新（リアルタイムで勝敗が変わるのを見せられます）
+        setInterval(fetchRanking, 10000);
     </script>
 </body>
 </html>
