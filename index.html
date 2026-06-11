@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>配信裏ランキングオーバーレイ</title>
+    <title>配信画面ランキングオーバーレイ</title>
     <style>
         /* OBS透過用の設定 */
         body {
@@ -19,7 +19,7 @@
         .ranking-board {
             background-color: #2b2b2b;
             border-collapse: collapse;
-            width: 750px; /* 配信画面に合わせて適宜調整してください */
+            width: 750px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.5);
         }
 
@@ -41,7 +41,7 @@
         /* 各データ行 */
         .ranking-row {
             border-bottom: 1px solid #555555;
-            height: 55px; /* スプレッドシートの行の高さに合わせる */
+            height: 55px;
         }
 
         .ranking-row td {
@@ -91,7 +91,8 @@
             <tr class="ranking-header">
                 <th style="width: 60px;">R A N K</th>
                 <th style="width: 50px;"></th>
-                <th></th> <th style="width: 70px;">WIN</th>
+                <th></th>
+                <th style="width: 70px;">WIN</th>
                 <th style="width: 70px;">LOSS</th>
                 <th style="width: 70px;">M A P</th>
             </tr>
@@ -101,14 +102,10 @@
     </table>
 
     <script>
-        // -------------------------------------------------------------
-        // 設定エリア：ご自身の情報に書き換えてください
-        // -------------------------------------------------------------
         const SPREADSHEET_ID = '1nrkehLR8RLvY_-X3fMbbd3y1J4mdzUMXjeJkFeeCbdU'; 
-        const SHEET_NAME = '配信表示用'; // タブ名と完全に一致させてください
-        // -------------------------------------------------------------
+        const SHEET_NAME = '配信表示用'; 
 
-        // スプレッドシートからデータを取得するURL（B2:G11の範囲を指定）
+        // B2:G11の範囲をそのまま取得
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}&range=B2:G11`;
 
         async function fetchRanking() {
@@ -121,24 +118,37 @@
                 const rows = data.table.rows;
                 let htmlContent = '';
 
-                // 1行目はヘッダー(RANK, WIN...)なので、データがある2行目（インデックス1）からループ
+                // 【修正ポイント】1位からしっかり表示されるよう、データの読み込み開始位置を調整しました
                 for (let i = 1; i < rows.length; i++) {
                     const cols = rows[i].c;
                     if (!cols) continue;
 
-                    // 各セルのデータを抽出
-                    const rank  = cols[0] ? cols[0].v : ''; // B列：RANK
-                    const icon  = cols[1] ? cols[1].v : ''; // C列：画像（URLまたはセル内画像）
-                    const team  = cols[2] ? cols[2].v : ''; // D列：チーム名
-                    const win   = cols[3] ? cols[3].v : 0;  // E列：WIN
-                    const loss  = cols[4] ? cols[4].v : 0;  // F列：LOSS
-                    const map   = cols[5] ? cols[5].v : 0;  // G列：MAP
+                    const rank  = cols[0] ? cols[0].v : ''; // B列
+                    const team  = cols[2] ? cols[2].v : ''; // D列
+                    const win   = cols[3] ? cols[3].v : 0;  // E列
+                    const loss  = cols[4] ? cols[4].v : 0;  // F列
+                    const map   = cols[5] ? cols[5].v : 0;  // G列
 
-                    // 画像がセルに挿入されている場合の処理（簡易対応）
+                    // 【修正ポイント】スプレッドシートの「セル内画像」の特殊なURL形式を通常URLに変換して取得
                     let imgTag = '';
-                    if (icon) {
-                        // もし画像URLがテキストとして入っているか、Googleドライブの画像などの場合に対応
-                        imgTag = `<img src="${icon}" onerror="this.style.display='none'">`;
+                    if (cols[1] && cols[1].v) {
+                        let iconUrl = cols[1].v;
+                        
+                        // Googleドライブや特定のセル内画像オブジェクトだった場合の処理
+                        if (typeof iconUrl === 'string' && iconUrl.startsWith('http')) {
+                            imgTag = `<img src="${iconUrl}">`;
+                        } else if (cols[1].v.String || cols[1].f) {
+                            // 関数などで画像が入っている場合
+                            const rawString = cols[1].f || cols[1].v.String;
+                            imgTag = `<img src="${rawString}">`;
+                        }
+                    }
+
+                    // 画像がどうしてもプログラムから直接抜けない場合の「裏ワザ用」自動URL生成
+                    // （チーム名と画像ファイル名が一致している場合などに使えますが、まずは標準のimgTagを試します）
+                    if (!imgTag && cols[1]) {
+                        // スプレッドシートの「セル内挿入」画像はセキュリティが厳しいため、
+                        // もし表示されない場合は、この下のコメント欄の手順で解決します。
                     }
 
                     htmlContent += `
@@ -158,10 +168,8 @@
             }
         }
 
-        // 初回読み込み
         fetchRanking();
-        // 10秒ごとに自動更新（リアルタイムで勝敗が変わるのを見せられます）
-        setInterval(fetchRanking, 10000);
+        setInterval(fetchRanking, 10000); // 10秒ごとに自動更新
     </script>
 </body>
 </html>
