@@ -1,1 +1,89 @@
-<h1>テスト中</h1>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>大会対戦表オーバーレイ</title>
+    <style>
+        /* OBS透過用の設定（背景を透明、文字を白に） */
+        body {
+            background-color: transparent;
+            color: white;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            margin: 20px;
+        }
+        h1 { text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 4試合並べる */
+            gap: 15px;
+        }
+        .match-box {
+            background: rgba(0, 0, 0, 0.75); /* 黒背景を少し透過 */
+            border: 2px solid #555;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .vs { color: #ff4757; font-weight: bold; margin: 0 5px; }
+    </style>
+</head>
+<body>
+
+    <h1>🏆 大会対戦スケジュール</h1>
+    <div class="grid-container" id="schedule-box">
+        </div>
+
+    <script>
+        // 【重要】あなたのスプレッドシートIDに書き換えてください
+        const SPREADSHEET_ID = 'ここにメモしたスプレッドシートIDを入れる';
+        // 読み込みたいシート名（例: シート1）
+        const SHEET_NAME = 'シート1'; 
+
+        // Googleの可視化APIを利用してデータをJSONとして取得
+        const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+
+        async function fetchSchedule() {
+            try {
+                const response = await fetch(url);
+                const text = await response.text();
+                // 不要な文字を削って純粋なJSONにする処理
+                const jsonText = text.match(/google\.visualization\.Query\.setResponse\(([\s\S\s]*)\);/)[1];
+                const data = JSON.parse(jsonText);
+                
+                const rows = data.table.rows;
+                let htmlContent = '';
+
+                // スプレッドシートの4行目（インデックス3）から11行目（第1節〜第9節）のデータをループ処理
+                // ※データの並び順に合わせて調整が必要な場合があります
+                for (let i = 2; i < 11; i++) {
+                    if (!rows[i]) continue;
+                    const cols = rows[i].c;
+                    
+                    // 例として第1節の試合1の対戦（C列とE列）を抜き出す簡易サンプル
+                    // 実際はここですべての節・試合をループして成形します
+                    const team1 = cols[2] ? cols[2].v : ''; // C列
+                    const team2 = cols[4] ? cols[4].v : ''; // E列
+                    
+                    if(team1 && team2) {
+                        htmlContent += `
+                            <div class="match-box">
+                                <div>第${i-1}節 試合1</div>
+                                <span>${team1}</span><span class="vs">vs</span><span>${team2}</span>
+                            </div>
+                        `;
+                    }
+                }
+                document.getElementById('schedule-box').innerHTML = htmlContent;
+            } catch (error) {
+                console.error("データの取得に失敗しました:", error);
+            }
+        }
+
+        // 初回読み込み
+        fetchSchedule();
+        // 30秒ごとに自動でスプレッドシートの最新情報を読み直す（リアルタイム更新）
+        setInterval(fetchSchedule, 30000);
+    </script>
+</body>
+</html>
