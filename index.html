@@ -10,7 +10,7 @@
             color: #ffffff;
             font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
             display: flex;
             justify-content: center;
         }
@@ -19,29 +19,29 @@
         .ranking-board {
             background-color: #2b2b2b;
             border-collapse: collapse;
-            width: 750px;
+            width: 780px; /* 見切れを防ぐために横幅を少し広げました */
             box-shadow: 0 10px 20px rgba(0,0,0,0.5);
         }
 
-        /* ヘッダー行（RANK, WIN, LOSS, MAP） */
+        /* ヘッダー行 */
         .ranking-header {
             background-color: #1e1e1e;
             border-bottom: 2px solid #555555;
         }
 
         .ranking-header th {
-            color: #e5c158; /* ゴールド風の文字色 */
+            color: #e5c158;
             font-weight: bold;
             font-size: 14px;
             letter-spacing: 2px;
-            padding: 8px 10px;
+            padding: 12px 10px;
             text-align: center;
         }
 
         /* 各データ行 */
         .ranking-row {
-            border-bottom: 1px solid #555555;
-            height: 55px;
+            border-bottom: 1px solid #444444;
+            height: 60px;
         }
 
         .ranking-row td {
@@ -49,7 +49,7 @@
             vertical-align: middle;
         }
 
-        /* 各列の固有デザイン */
+        /* 各列のデザイン調整（画質・見切れ対策） */
         .col-rank {
             font-size: 32px;
             font-weight: bold;
@@ -58,29 +58,32 @@
         }
 
         .col-icon {
-            width: 50px;
+            width: 60px;
             text-align: center;
         }
 
+        /* 🌟 画像が引き伸ばされたり見切れたりしないように設定 */
         .col-icon img {
             width: 45px;
             height: 45px;
-            object-fit: cover;
-            border-radius: 4px;
+            object-fit: contain; /* 横縦比を維持して綺麗に収める設定 */
+            border-radius: 6px;
             vertical-align: middle;
+            background-color: transparent; /* 背景が透過の画像も綺麗に出ます */
         }
 
         .col-team {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: bold;
             text-align: left;
+            padding-left: 15px;
         }
 
         .col-win, .col-loss, .col-map {
             font-size: 26px;
             font-weight: bold;
             text-align: center;
-            width: 70px;
+            width: 80px;
         }
     </style>
 </head>
@@ -89,12 +92,12 @@
     <table class="ranking-board">
         <thead>
             <tr class="ranking-header">
-                <th style="width: 60px;">R A N K</th>
-                <th style="width: 50px;"></th>
+                <th>R A N K</th>
                 <th></th>
-                <th style="width: 70px;">WIN</th>
-                <th style="width: 70px;">LOSS</th>
-                <th style="width: 70px;">M A P</th>
+                <th></th>
+                <th>WIN</th>
+                <th>LOSS</th>
+                <th>M A P</th>
             </tr>
         </thead>
         <tbody id="ranking-data">
@@ -104,6 +107,21 @@
     <script>
         const SPREADSHEET_ID = '1nrkehLR8RLvY_-X3fMbbd3y1J4mdzUMXjeJkFeeCbdU'; 
         const SHEET_NAME = '配信表示用'; 
+
+        // 🌟【ここに高画質な画像URLをセットします】
+        // 5位のいっちーチームのURLをセットしてあります。
+        // 他のチームも、リンク切れしない高画質な画像URL（Discordや外部にアップしたもの）に置き換えていけます。
+        const TEAM_ICONS = {
+            'ありがチーム': 'https://drive.google.com/thumbnail?sz=w100&id=1FM-kX3obM2xpOSKzz-XMtOyMQvgwGnN6', // 例：今のドライブ画像
+            'たくりんチーム': '',
+            'DON閣下チーム': '',
+            'りすかチーム': '',
+            'いっちーチーム': 'https://drive.google.com/thumbnail?sz=w100&id=1FM-kX3obM2xpOSKzz-XMtOyMQvgwGnN6', // いっちーチームの現URL
+            'ころろチーム': '',
+            'あんぺあチーム': '',
+            'らてチーム': '',
+            'いゆチーム': ''
+        };
 
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}&range=B2:G11`;
 
@@ -127,26 +145,19 @@
                     const loss  = cols[4] ? cols[4].v : 0;  // F列
                     const map   = cols[5] ? cols[5].v : 0;  // G列
 
-                    // 画像タグの生成処理
-                    let imgTag = '';
-                    if (cols[1] && cols[1].v) {
-                        let cellValue = String(cols[1].v).trim();
-                        
-                        if (cellValue.startsWith('http')) {
-                            // 【重要】GoogleドライブのURLだった場合、ブロックを回避するリンク形式に変換
-                            if (cellValue.includes('drive.google.com')) {
-                                let fileId = '';
-                                // URLからファイルID（長い英数字）を抽出
-                                const idMatch = cellValue.match(/id=([^&]+)/) || cellValue.match(/\/d\/([^/]+)/);
-                                if (idMatch) {
-                                    fileId = idMatch[1];
-                                    // 外部サイトでも100%読み込みを拒否されないサムネイル用APIのURLに組み替える
-                                    cellValue = `https://lh3.googleusercontent.com/d/${fileId}`;
-                                }
-                            }
-                            imgTag = `<img src="${cellValue}">`;
+                    // 上記のTEAM_ICONSリストから画像を取得。なければ元のセルの値を使用
+                    let finalImgUrl = '';
+                    if (team && TEAM_ICONS[team]) {
+                        finalImgUrl = TEAM_ICONS[team];
+                    } else if (cols[1] && cols[1].v && String(cols[1].v).startsWith('http')) {
+                        finalImgUrl = String(cols[1].v).trim();
+                        if (finalImgUrl.includes('drive.google.com')) {
+                            const idMatch = finalImgUrl.match(/id=([^&]+)/) || finalImgUrl.match(/\/d\/([^/]+)/);
+                            if (idMatch) finalImgUrl = `https://drive.google.com/thumbnail?sz=w100&id=${idMatch[1]}`;
                         }
                     }
+
+                    let imgTag = finalImgUrl ? `<img src="${finalImgUrl}">` : '';
 
                     htmlContent += `
                         <tr class="ranking-row">
@@ -166,7 +177,7 @@
         }
 
         fetchRanking();
-        setInterval(fetchRanking, 10000); // 10秒ごとに自動更新
+        setInterval(fetchRanking, 10000);
     </script>
 </body>
 </html>
