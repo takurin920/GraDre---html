@@ -105,7 +105,6 @@
         const SPREADSHEET_ID = '1nrkehLR8RLvY_-X3fMbbd3y1J4mdzUMXjeJkFeeCbdU'; 
         const SHEET_NAME = '配信表示用'; 
 
-        // B2:G11の範囲を取得
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}&range=B2:G11`;
 
         async function fetchRanking() {
@@ -122,38 +121,30 @@
                     const cols = rows[i].c;
                     if (!cols) continue;
 
-                    const rank  = cols[0] ? cols[0].v : ''; // B列：RANK
-                    const team  = cols[2] ? cols[2].v : ''; // D列：チーム名
-                    const win   = cols[3] ? cols[3].v : 0;  // E列：WIN
-                    const loss  = cols[4] ? cols[4].v : 0;  // F列：LOSS
-                    const map   = cols[5] ? cols[5].v : 0;  // G列：MAP
+                    const rank  = cols[0] ? cols[0].v : ''; // B列
+                    const team  = cols[2] ? cols[2].v : ''; // D列
+                    const win   = cols[3] ? cols[3].v : 0;  // E列
+                    const loss  = cols[4] ? cols[4].v : 0;  // F列
+                    const map   = cols[5] ? cols[5].v : 0;  // G列
 
-                    // 【超重要】=SORTや=IMAGE関数でラップされた画像URLを抽出する特殊処理
+                    // 画像タグの生成処理
                     let imgTag = '';
-                    if (cols[1]) {
-                        // 1. 通常のテキストとしてのURL、またはフォーマットされた値を取得
-                        let iconUrl = cols[1].v;
-                        let formattedUrl = cols[1].f;
+                    if (cols[1] && cols[1].v) {
+                        let cellValue = String(cols[1].v).trim();
                         
-                        let targetUrl = '';
-                        if (typeof iconUrl === 'string' && iconUrl.startsWith('http')) {
-                            targetUrl = iconUrl;
-                        } else if (typeof formattedUrl === 'string' && formattedUrl.includes('http')) {
-                            // =IMAGE("URL") などの数式からURLっぽい文字列を強引に抽出
-                            const match = formattedUrl.match(/https?:\/\/[^\s"']+/);
-                            if (match) targetUrl = match[0];
-                        }
-
-                        // 2. それでも取れない場合の特殊パターン（裏側でURLが隠れているケース）
-                        if (!targetUrl && cols[1].v && typeof cols[1].v === 'string') {
-                            const match = cols[1].v.match(/https?:\/\/[^\s"']+/);
-                            if (match) targetUrl = match[0];
-                        }
-
-                        if (targetUrl) {
-                            // URLの末尾の不要な閉じカッコやクォーテーションを掃除
-                            targetUrl = targetUrl.replace(/["'\)]+$/, '');
-                            imgTag = `<img src="${targetUrl}">`;
+                        if (cellValue.startsWith('http')) {
+                            // 【重要】GoogleドライブのURLだった場合、ブロックを回避するリンク形式に変換
+                            if (cellValue.includes('drive.google.com')) {
+                                let fileId = '';
+                                // URLからファイルID（長い英数字）を抽出
+                                const idMatch = cellValue.match(/id=([^&]+)/) || cellValue.match(/\/d\/([^/]+)/);
+                                if (idMatch) {
+                                    fileId = idMatch[1];
+                                    // 外部サイトでも100%読み込みを拒否されないサムネイル用APIのURLに組み替える
+                                    cellValue = `https://lh3.googleusercontent.com/d/${fileId}`;
+                                }
+                            }
+                            imgTag = `<img src="${cellValue}">`;
                         }
                     }
 
