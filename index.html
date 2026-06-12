@@ -105,7 +105,7 @@
         const SPREADSHEET_ID = '1nrkehLR8RLvY_-X3fMbbd3y1J4mdzUMXjeJkFeeCbdU'; 
         const SHEET_NAME = '配信表示用'; 
 
-        // B2:G11の範囲をそのまま取得
+        // B2:G11の範囲を取得
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}&range=B2:G11`;
 
         async function fetchRanking() {
@@ -118,37 +118,43 @@
                 const rows = data.table.rows;
                 let htmlContent = '';
 
-                // 【修正ポイント】1位からしっかり表示されるよう、データの読み込み開始位置を調整しました
                 for (let i = 0; i < rows.length; i++) {
                     const cols = rows[i].c;
                     if (!cols) continue;
 
-                    const rank  = cols[0] ? cols[0].v : ''; // B列
-                    const team  = cols[2] ? cols[2].v : ''; // D列
-                    const win   = cols[3] ? cols[3].v : 0;  // E列
-                    const loss  = cols[4] ? cols[4].v : 0;  // F列
-                    const map   = cols[5] ? cols[5].v : 0;  // G列
+                    const rank  = cols[0] ? cols[0].v : ''; // B列：RANK
+                    const team  = cols[2] ? cols[2].v : ''; // D列：チーム名
+                    const win   = cols[3] ? cols[3].v : 0;  // E列：WIN
+                    const loss  = cols[4] ? cols[4].v : 0;  // F列：LOSS
+                    const map   = cols[5] ? cols[5].v : 0;  // G列：MAP
 
-                    // 【修正ポイント】スプレッドシートの「セル内画像」の特殊なURL形式を通常URLに変換して取得
+                    // 【超重要】=SORTや=IMAGE関数でラップされた画像URLを抽出する特殊処理
                     let imgTag = '';
-                    if (cols[1] && cols[1].v) {
+                    if (cols[1]) {
+                        // 1. 通常のテキストとしてのURL、またはフォーマットされた値を取得
                         let iconUrl = cols[1].v;
+                        let formattedUrl = cols[1].f;
                         
-                        // Googleドライブや特定のセル内画像オブジェクトだった場合の処理
+                        let targetUrl = '';
                         if (typeof iconUrl === 'string' && iconUrl.startsWith('http')) {
-                            imgTag = `<img src="${iconUrl}">`;
-                        } else if (cols[1].v.String || cols[1].f) {
-                            // 関数などで画像が入っている場合
-                            const rawString = cols[1].f || cols[1].v.String;
-                            imgTag = `<img src="${rawString}">`;
+                            targetUrl = iconUrl;
+                        } else if (typeof formattedUrl === 'string' && formattedUrl.includes('http')) {
+                            // =IMAGE("URL") などの数式からURLっぽい文字列を強引に抽出
+                            const match = formattedUrl.match(/https?:\/\/[^\s"']+/);
+                            if (match) targetUrl = match[0];
                         }
-                    }
 
-                    // 画像がどうしてもプログラムから直接抜けない場合の「裏ワザ用」自動URL生成
-                    // （チーム名と画像ファイル名が一致している場合などに使えますが、まずは標準のimgTagを試します）
-                    if (!imgTag && cols[1]) {
-                        // スプレッドシートの「セル内挿入」画像はセキュリティが厳しいため、
-                        // もし表示されない場合は、この下のコメント欄の手順で解決します。
+                        // 2. それでも取れない場合の特殊パターン（裏側でURLが隠れているケース）
+                        if (!targetUrl && cols[1].v && typeof cols[1].v === 'string') {
+                            const match = cols[1].v.match(/https?:\/\/[^\s"']+/);
+                            if (match) targetUrl = match[0];
+                        }
+
+                        if (targetUrl) {
+                            // URLの末尾の不要な閉じカッコやクォーテーションを掃除
+                            targetUrl = targetUrl.replace(/["'\)]+$/, '');
+                            imgTag = `<img src="${targetUrl}">`;
+                        }
                     }
 
                     htmlContent += `
