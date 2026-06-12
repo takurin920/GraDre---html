@@ -8,7 +8,8 @@
         body {
             background-color: transparent;
             color: #ffffff;
-            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+            /* スプレッドシートのデフォルトフォント（Arial/メイリオ系）に合わせます */
+            font-family: Arial, 'Helvetica Neue', 'Meiryo', 'Hiragino Kaku Gothic ProN', sans-serif;
             margin: 0;
             padding: 10px;
             display: flex;
@@ -19,7 +20,7 @@
         .ranking-board {
             background-color: #2b2b2b;
             border-collapse: collapse;
-            width: 780px; /* 見切れを防ぐために横幅を少し広げました */
+            width: 780px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.5);
         }
 
@@ -31,8 +32,8 @@
 
         .ranking-header th {
             color: #e5c158;
-            font-weight: bold;
-            font-size: 14px;
+            font-weight: 900; /* 極太に */
+            font-size: 13px;
             letter-spacing: 2px;
             padding: 12px 10px;
             text-align: center;
@@ -41,7 +42,7 @@
         /* 各データ行 */
         .ranking-row {
             border-bottom: 1px solid #444444;
-            height: 60px;
+            height: 65px; /* 行の高さを少し広げてゆったりさせました */
         }
 
         .ranking-row td {
@@ -49,10 +50,10 @@
             vertical-align: middle;
         }
 
-        /* 各列のデザイン調整（画質・見切れ対策） */
+        /* 🌟 順位（RANK）の文字サイズと太さ */
         .col-rank {
-            font-size: 32px;
-            font-weight: bold;
+            font-size: 36px; /* 少し大きく */
+            font-weight: 800; /* ガッツリ太字に */
             text-align: center;
             width: 60px;
         }
@@ -62,26 +63,27 @@
             text-align: center;
         }
 
-        /* 🌟 画像が引き伸ばされたり見切れたりしないように設定 */
         .col-icon img {
-            width: 45px;
-            height: 45px;
-            object-fit: contain; /* 横縦比を維持して綺麗に収める設定 */
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
             border-radius: 6px;
             vertical-align: middle;
-            background-color: transparent; /* 背景が透過の画像も綺麗に出ます */
         }
 
+        /* 🌟 チーム名の文字サイズと太さ */
         .col-team {
-            font-size: 22px;
-            font-weight: bold;
+            font-size: 24px; /* 22pxから24pxに大きくしました */
+            font-weight: 700; /* しっかり太字（ボールド）に */
             text-align: left;
             padding-left: 15px;
         }
 
+        /* 🌟 WIN, LOSS, MAP の数字 */
         .col-win, .col-loss, .col-map {
-            font-size: 26px;
-            font-weight: bold;
+            font-size: 32px; /* 26pxから32pxに大幅アップ */
+            font-weight: 800; /* スプレッドシートのような力強い太さに */
+            font-family: 'Arial Black', Impact, sans-serif; /* 数字が力強く見えるフォントを指定 */
             text-align: center;
             width: 80px;
         }
