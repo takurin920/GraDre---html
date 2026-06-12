@@ -8,7 +8,6 @@
         body {
             background-color: transparent;
             color: #ffffff;
-            /* スプレッドシートのデフォルトフォント（Arial/メイリオ系）に合わせます */
             font-family: Arial, 'Helvetica Neue', 'Meiryo', 'Hiragino Kaku Gothic ProN', sans-serif;
             margin: 0;
             padding: 10px;
@@ -32,17 +31,20 @@
 
         .ranking-header th {
             color: #e5c158;
-            font-weight: 900; /* 極太に */
+            font-weight: 900;
             font-size: 13px;
-            letter-spacing: 2px;
-            padding: 4px 10px; /* 🌟 12pxから4pxに減らして上下を限界まで平たくしました */
+            /* 🌟 文字の間隔を少し広げてスプレッドシートの雰囲気に近づけます */
+            letter-spacing: 3px; 
+            /* 🌟 上下を4pxにして限界まで平たくしました */
+            padding: 4px 10px; 
             text-align: center;
+            white-space: nowrap; /* 🌟 絶対に文字を改行させない設定 */
         }
 
         /* 各データ行 */
         .ranking-row {
             border-bottom: 1px solid #444444;
-            height: 65px; /* 行の高さを少し広げてゆったりさせました */
+            height: 52px; /* 🌟 行の高さも引き締まった平たさに調整 */
         }
 
         .ranking-row td {
@@ -50,12 +52,12 @@
             vertical-align: middle;
         }
 
-        /* 🌟 順位（RANK）の文字サイズと太さ */
+        /* 各列のデザイン設定 */
         .col-rank {
-            font-size: 36px; /* 少し大きく */
-            font-weight: 800; /* ガッツリ太字に */
+            font-size: 36px;
+            font-weight: 800;
             text-align: center;
-            width: 60px;
+            width: 80px; /* 🌟 改行を防ぐために少し幅を広げました */
         }
 
         .col-icon {
@@ -64,26 +66,24 @@
         }
 
         .col-icon img {
-            width: 48px;
-            height: 48px;
+            width: 45px;
+            height: 45px;
             object-fit: contain;
             border-radius: 6px;
             vertical-align: middle;
         }
 
-        /* 🌟 チーム名の文字サイズと太さ */
         .col-team {
-            font-size: 24px; /* 22pxから24pxに大きくしました */
-            font-weight: 700; /* しっかり太字（ボールド）に */
+            font-size: 24px;
+            font-weight: 700;
             text-align: left;
             padding-left: 15px;
         }
 
-        /* 🌟 WIN, LOSS, MAP の数字 */
         .col-win, .col-loss, .col-map {
-            font-size: 32px; /* 26pxから32pxに大幅アップ */
-            font-weight: 800; /* スプレッドシートのような力強い太さに */
-            font-family: 'Arial Black', Impact, sans-serif; /* 数字が力強く見えるフォントを指定 */
+            font-size: 32px;
+            font-weight: 800;
+            font-family: 'Arial Black', Impact, sans-serif;
             text-align: center;
             width: 80px;
         }
@@ -94,12 +94,12 @@
     <table class="ranking-board">
         <thead>
             <tr class="ranking-header">
-                <th>R A N K</th>
+                <th style="width: 80px;">RANK</th>
+                <th style="width: 60px;"></th>
                 <th></th>
-                <th></th>
-                <th>WIN</th>
-                <th>LOSS</th>
-                <th>M A P</th>
+                <th style="width: 80px;">WIN</th>
+                <th style="width: 80px;">LOSS</th>
+                <th style="width: 80px;">MAP</th>
             </tr>
         </thead>
         <tbody id="ranking-data">
@@ -111,14 +111,12 @@
         const SHEET_NAME = '配信表示用'; 
 
         // 🌟【ここに高画質な画像URLをセットします】
-        // 5位のいっちーチームのURLをセットしてあります。
-        // 他のチームも、リンク切れしない高画質な画像URL（Discordや外部にアップしたもの）に置き換えていけます。
         const TEAM_ICONS = {
-            'ありがチーム': 'https://drive.google.com/thumbnail?sz=w100&id=1FM-kX3obM2xpOSKzz-XMtOyMQvgwGnN6', // 例：今のドライブ画像
+            'ありがチーム': 'https://drive.google.com/thumbnail?sz=w200&id=1FM-kX3obM2xpOSKzz-XMtOyMQvgwGnN6', // 例
             'たくりんチーム': '',
             'DON閣下チーム': '',
             'りすかチーム': '',
-            'いっちーチーム': 'https://drive.google.com/thumbnail?sz=w100&id=1FM-kX3obM2xpOSKzz-XMtOyMQvgwGnN6', // いっちーチームの現URL
+            'いっちーチーム': 'https://drive.google.com/thumbnail?sz=w200&id=1FM-kX3obM2xpOSKzz-XMtOyMQvgwGnN6',
             'ころろチーム': '',
             'あんぺあチーム': '',
             'らてチーム': '',
@@ -147,7 +145,6 @@
                     const loss  = cols[4] ? cols[4].v : 0;  // F列
                     const map   = cols[5] ? cols[5].v : 0;  // G列
 
-                    // 上記のTEAM_ICONSリストから画像を取得。なければ元のセルの値を使用
                     let finalImgUrl = '';
                     if (team && TEAM_ICONS[team]) {
                         finalImgUrl = TEAM_ICONS[team];
@@ -155,7 +152,7 @@
                         finalImgUrl = String(cols[1].v).trim();
                         if (finalImgUrl.includes('drive.google.com')) {
                             const idMatch = finalImgUrl.match(/id=([^&]+)/) || finalImgUrl.match(/\/d\/([^/]+)/);
-                            if (idMatch) finalImgUrl = `https://drive.google.com/thumbnail?sz=w100&id=${idMatch[1]}`;
+                            if (idMatch) finalImgUrl = `https://drive.google.com/thumbnail?sz=w200&id=${idMatch[1]}`;
                         }
                     }
 
