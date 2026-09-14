@@ -18,7 +18,7 @@
       position: relative;
       width: 1500px;
       height: 500px;
-      overflow: hidden;
+      overflow: hidden; /* 画面外の画像は隠す */
     }
     .slide {
       position: absolute;
@@ -26,12 +26,21 @@
       left: 0;
       width: 1500px;
       height: 500px;
-      object-fit: cover; /* 1500x500pxに綺麗に収める */
+      object-fit: cover;
+      /* 横スライド用の初期位置設定（右側に配置＆透明化） */
+      transform: translateX(100%);
       opacity: 0;
-      transition: opacity 1s ease-in-out;
+      transition: transform 0.8s ease-in-out, opacity 0.8s ease-in-out;
     }
+    /* 現在表示中：中央 */
     .slide.active {
+      transform: translateX(0);
       opacity: 1;
+    }
+    /* 退場時：左側に抜ける */
+    .slide.exit {
+      transform: translateX(-100%);
+      opacity: 0;
     }
   </style>
 </head>
@@ -40,12 +49,11 @@
 <div class="slideshow-container" id="slideshow"></div>
 
 <script>
-  // 設定済みのAPIキーとフォルダID
   const API_KEY = 'AIzaSyA8Hr2SgKOA7RwPBQ-GcvSVDAvHQhjQwZ4';
   const FOLDER_ID = '1MrcjXWF4TNs3k9Evk53tOu1Ss0bCIkcx';
 
-  const DISPLAY_TIME = 8000; // 画像の表示時間（5秒）
-  const RELOAD_INTERVAL = 300000; // 5分ごとにドライブの更新を自動チェック
+  const DISPLAY_TIME = 5000; // 各画像の表示時間（5秒）
+  const RELOAD_INTERVAL = 300000; // ドライブの自動更新チェック（5分）
 
   let slides = [];
   let currentIndex = 0;
@@ -72,7 +80,6 @@
     
     files.forEach((file, index) => {
       const img = document.createElement('img');
-      // 高画質（横幅1920px基準）で画像を取得
       img.src = `https://drive.google.com/thumbnail?id=${file.id}&sz=w1920`;
       img.className = 'slide' + (index === 0 ? ' active' : '');
       container.appendChild(img);
@@ -89,9 +96,23 @@
 
   function nextSlide() {
     if (slides.length <= 1) return;
-    slides[currentIndex].classList.remove('active');
+
+    const currentSlide = slides[currentIndex];
     currentIndex = (currentIndex + 1) % slides.length;
-    slides[currentIndex].classList.add('active');
+    const nextSlideElement = slides[currentIndex];
+
+    // 現在の画像を左へ画面外に送り出す
+    currentSlide.classList.remove('active');
+    currentSlide.classList.add('exit');
+
+    // 次の画像を右側から中央へ移動させる
+    nextSlideElement.classList.remove('exit');
+    nextSlideElement.classList.add('active');
+
+    // 送り出しアニメーションが終わったら位置リセット（クラスの削除）
+    setTimeout(() => {
+      currentSlide.classList.remove('exit');
+    }, 800);
   }
 
   fetchImages();
