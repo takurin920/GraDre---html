@@ -1,184 +1,102 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <title>配信画面ランキングオーバーレイ</title>
-    <style>
-        /* OBS透過用の設定 */
-        body {
-            background-color: transparent;
-            color: #ffffff;
-            font-family: Arial, 'Helvetica Neue', 'Meiryo', 'Hiragino Kaku Gothic ProN', sans-serif;
-            margin: 0;
-            padding: 10px;
-            display: flex;
-            justify-content: center;
-        }
-
-        /* ランキングボード全体のコンテナ */
-        .ranking-board {
-            background-color: #2b2b2b;
-            border-collapse: collapse;
-            width: 780px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-        }
-
-        /* ヘッダー行 */
-        .ranking-header {
-            background-color: #1e1e1e;
-            border-bottom: 2px solid #555555;
-        }
-
-        .ranking-header th {
-            color: #e5c158;
-            font-weight: 900;
-            font-size: 13px;
-            /* 🌟 文字の間隔を少し広げてスプレッドシートの雰囲気に近づけます */
-            letter-spacing: 3px; 
-            /* 🌟 上下を4pxにして限界まで平たくしました */
-            padding: 4px 10px; 
-            text-align: center;
-            white-space: nowrap; /* 🌟 絶対に文字を改行させない設定 */
-        }
-
-        /* 各データ行 */
-        .ranking-row {
-            border-bottom: 1px solid #444444;
-            height: 52px; /* 🌟 行の高さも引き締まった平たさに調整 */
-        }
-
-        .ranking-row td {
-            padding: 5px 10px;
-            vertical-align: middle;
-        }
-
-        /* 各列のデザイン設定 */
-        .col-rank {
-            font-size: 36px;
-            font-weight: 800;
-            text-align: center;
-            width: 80px; /* 🌟 改行を防ぐために少し幅を広げました */
-        }
-
-        /* 🌟 2. アイコンを囲む「列の横幅」を広げます */
-        .col-icon {
-            width: 75px; /* 【旧】60px → 【新】75px */
-            text-align: center;
-        }
-
-        /* 🌟 1. アイコン画像「自体の大きさ」を大きくします */
-        .col-icon img {
-            width: 60px;  /* 【旧】45px → 【新】60px */
-            height: 60px; /* 【旧】45px → 【新】60px */
-            object-fit: contain;
-            border-radius: 6px;
-            vertical-align: middle;
-        }
-
-        .col-team {
-            font-size: 24px;
-            font-weight: 700;
-            text-align: left;
-            padding-left: 15px;
-        }
-
-        .col-win, .col-loss, .col-map {
-            font-size: 32px;
-            font-weight: 800;
-            font-family: 'Arial Black', Impact, sans-serif;
-            text-align: center;
-            width: 80px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: transparent; /* OBS背景透過 */
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 1500px;
+      height: 500px;
+    }
+    .slideshow-container {
+      position: relative;
+      width: 1500px;
+      height: 500px;
+      overflow: hidden;
+    }
+    .slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1500px;
+      height: 500px;
+      object-fit: cover; /* 1500x500pxに綺麗に収める */
+      opacity: 0;
+      transition: opacity 1s ease-in-out;
+    }
+    .slide.active {
+      opacity: 1;
+    }
+  </style>
 </head>
 <body>
 
-    <table class="ranking-board">
-        <thead>
-            <tr class="ranking-header">
-                <th style="width: 80px;">RANK</th>
-                <th style="width: 60px;"></th>
-                <th></th>
-                <th style="width: 80px;">WIN</th>
-                <th style="width: 80px;">LOSS</th>
-                <th style="width: 80px;">MAP</th>
-            </tr>
-        </thead>
-        <tbody id="ranking-data">
-            </tbody>
-    </table>
+<div class="slideshow-container" id="slideshow"></div>
 
-    <script>
-        const SPREADSHEET_ID = '1nrkehLR8RLvY_-X3fMbbd3y1J4mdzUMXjeJkFeeCbdU'; 
-        const SHEET_NAME = '配信表示用'; 
+<script>
+  // 設定済みのAPIキーとフォルダID
+  const API_KEY = 'AIzaSyA8Hr2SgKOA7RwPBQ-GcvSVDAvHQhjQwZ4';
+  const FOLDER_ID = '1MrcjXWF4TNs3k9Evk53tOu1Ss0bCIkcx';
 
-        // 🌟【ここに高画質な画像URLをセットします】
-        const TEAM_ICONS = {
-            'ありがチーム': 'https://lh3.googleusercontent.com/d/17fDj2h1cyaOb3T51cC97EsmKAaU--2Ib', 
-            'たくりんチーム': 'https://lh3.googleusercontent.com/d/1PndyZVSdXKQ748d2ooM7SyaJQcRGpNbc',
-            'DON閣下チーム': 'https://lh3.googleusercontent.com/d/1ld5DXSNjhlbZ1lbiEDOt3q-iLhbrkwAF',
-            'りすかチーム': 'https://lh3.googleusercontent.com/d/1cfnOgF5PqO0m-Qr7gLD8KMY_Lp4ikmr6',
-            'いっちーチーム': 'https://lh3.googleusercontent.com/d/1I6Up7ij0iKGnA0OGsYdvaUX4W2PLcLmD',
-            'ころろチーム': 'https://lh3.googleusercontent.com/d/1TtEScI1Hvlhh219KvnWme9IaW2AO06vw',
-            'あんぺあチーム': 'https://lh3.googleusercontent.com/d/1HkPUbprOWIAUYDbdrv-GSUiKg7ZJ_qtK',
-            'らてチーム': 'https://lh3.googleusercontent.com/d/12Ggg7Z8p2uBFz8mJ9vHVJFJChiPPkP9i',
-            'いゆチーム': 'https://lh3.googleusercontent.com/d/1hr9A9HOyRCv6b5Qf-s7lf_wu5h3IOQir'
-        };
+  const DISPLAY_TIME = 8000; // 画像の表示時間（5秒）
+  const RELOAD_INTERVAL = 300000; // 5分ごとにドライブの更新を自動チェック
 
-        const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}&range=B2:G11`;
+  let slides = [];
+  let currentIndex = 0;
+  let timer = null;
 
-        async function fetchRanking() {
-            try {
-                const response = await fetch(url);
-                const text = await response.text();
-                const jsonText = text.match(/google\.visualization\.Query\.setResponse\(([\s\S\s]*)\);/)[1];
-                const data = JSON.parse(jsonText);
-                
-                const rows = data.table.rows;
-                let htmlContent = '';
+  async function fetchImages() {
+    const query = `'${FOLDER_ID}' in parents and mimeType contains 'image/' and trashed = false`;
+    const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&key=${API_KEY}`;
 
-                for (let i = 0; i < rows.length; i++) {
-                    const cols = rows[i].c;
-                    if (!cols) continue;
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.files && data.files.length > 0) {
+        renderSlideshow(data.files);
+      }
+    } catch (error) {
+      console.error('Failed to fetch images from Google Drive:', error);
+    }
+  }
 
-                    const rank  = cols[0] ? cols[0].v : ''; // B列
-                    const team  = cols[2] ? cols[2].v : ''; // D列
-                    const win   = cols[3] ? cols[3].v : 0;  // E列
-                    const loss  = cols[4] ? cols[4].v : 0;  // F列
-                    const map   = cols[5] ? cols[5].v : 0;  // G列
+  function renderSlideshow(files) {
+    const container = document.getElementById('slideshow');
+    container.innerHTML = '';
+    
+    files.forEach((file, index) => {
+      const img = document.createElement('img');
+      // 高画質（横幅1920px基準）で画像を取得
+      img.src = `https://drive.google.com/thumbnail?id=${file.id}&sz=w1920`;
+      img.className = 'slide' + (index === 0 ? ' active' : '');
+      container.appendChild(img);
+    });
 
-                    let finalImgUrl = '';
-                    if (team && TEAM_ICONS[team]) {
-                        finalImgUrl = TEAM_ICONS[team];
-                    } else if (cols[1] && cols[1].v && String(cols[1].v).startsWith('http')) {
-                        finalImgUrl = String(cols[1].v).trim();
-                        if (finalImgUrl.includes('drive.google.com')) {
-                            const idMatch = finalImgUrl.match(/id=([^&]+)/) || finalImgUrl.match(/\/d\/([^/]+)/);
-                            if (idMatch) finalImgUrl = `https://drive.google.com/thumbnail?sz=w200&id=${idMatch[1]}`;
-                        }
-                    }
+    slides = document.querySelectorAll('.slide');
+    currentIndex = 0;
 
-                    let imgTag = finalImgUrl ? `<img src="${finalImgUrl}">` : '';
+    if (timer) clearInterval(timer);
+    if (slides.length > 1) {
+      timer = setInterval(nextSlide, DISPLAY_TIME);
+    }
+  }
 
-                    htmlContent += `
-                        <tr class="ranking-row">
-                            <td class="col-rank">${rank}</td>
-                            <td class="col-icon">${imgTag}</td>
-                            <td class="col-team">${team}</td>
-                            <td class="col-win">${win}</td>
-                            <td class="col-loss">${loss}</td>
-                            <td class="col-map">${map}</td>
-                        </tr>
-                    `;
-                }
-                document.getElementById('ranking-data').innerHTML = htmlContent;
-            } catch (error) {
-                console.error("ランキングデータの取得に失敗しました:", error);
-            }
-        }
+  function nextSlide() {
+    if (slides.length <= 1) return;
+    slides[currentIndex].classList.remove('active');
+    currentIndex = (currentIndex + 1) % slides.length;
+    slides[currentIndex].classList.add('active');
+  }
 
-        fetchRanking();
-        setInterval(fetchRanking, 10000);
-    </script>
+  fetchImages();
+  setInterval(fetchImages, RELOAD_INTERVAL);
+</script>
+
 </body>
 </html>
